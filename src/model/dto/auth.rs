@@ -34,6 +34,8 @@ pub struct CurrentUserResponse {
 pub struct RegisterRequest {
     #[validate(length(min = 1, message = "Username cannot be empty"))]
     pub username: String,
+    #[validate(email(message = "Invalid email address"))]
+    pub email: Option<String>,
     #[validate(length(min = 8, message = "Password must be at least 8 characters long"))]
     pub password: String,
     #[validate(range(min = 1, message = "User type cannot be empty"))]

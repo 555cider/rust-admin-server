@@ -148,6 +148,7 @@ impl AuthService {
             .auth_repo
             .create_user(
                 username,
+                req.email,
                 hashed_password,
                 req.user_type_id,
                 true, // is_active

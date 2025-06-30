@@ -65,6 +65,9 @@
                                 사용자
                             </th>
                             <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                                아이디
+                            </th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                                 이메일
                             </th>
                             <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
@@ -177,12 +180,14 @@
                     </div>
                     <div class="ml-4">
                         <div class="font-medium text-gray-900">${username}</div>
-                        ${userId ? `<div class="text-gray-500">${userId}</div>` : ''}
                     </div>
                 </div>
             </td>
             <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                <div class="text-gray-900">${email}</div>
+                ${userId}
+            </td>
+            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                ${email}
             </td>
             <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

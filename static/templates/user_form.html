@@ -48,8 +48,7 @@
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label for="email" class="block text-sm font-medium text-gray-700">이메일 <span
-                                class="text-red-500">*</span></label>
+                        <label for="email" class="block text-sm font-medium text-gray-700">이메일 <span class="text-red-500">*</span></label>
                         <input type="email" id="email" name="email" required
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
                         <p class="mt-1 text-sm text-red-600" id="email-error"></p>
@@ -173,6 +172,10 @@
             document.getElementById('userTypeId').value = user.user_type_id || '';
             document.getElementById('isActive').checked = user.is_active !== false;
             document.getElementById('forcePasswordChange').checked = user.force_password_change || false;
+            
+            // Disable username and email fields for existing users
+            document.getElementById('username').disabled = true;
+            document.getElementById('email').disabled = true;
 
         } catch (error) {
             console.error('Error loading user data:', error);
@@ -244,6 +247,17 @@
                 is_active: document.getElementById('isActive').checked,
                 force_password_change: document.getElementById('forcePasswordChange').checked
             };
+            
+            // Update user request doesn't require all fields
+            if (!isNewUser) {
+                formData._is_active = formData.is_active;
+                formData._user_type_id = formData.user_type_id;
+                
+                // Only include password if it's being changed
+                if (document.getElementById('password').value.trim()) {
+                    formData.password = document.getElementById('password').value.trim();
+                }
+            }
 
             // 비밀번호 유효성 검사 (새 사용자인 경우에만)
             if (!userId) {

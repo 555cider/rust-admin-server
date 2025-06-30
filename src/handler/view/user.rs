@@ -176,6 +176,7 @@ async fn user_edit_page(
 #[derive(Debug, Deserialize)]
 pub struct UserFormData {
     _username: String,
+    _email: Option<String>,
     _password: Option<String>,
     _user_type_id: i64,
     _is_active: bool,
@@ -185,6 +186,8 @@ pub struct UserFormData {
 pub struct CreateUserForm {
     #[validate(length(min = 3, message = "Username must be at least 3 characters long"))]
     username: String,
+    #[validate(email(message = "Invalid email format"))]
+    email: String,
     #[validate(length(min = 8, message = "Password must be at least 8 characters long"))]
     password: String,
     _user_type_id: i64,
@@ -195,6 +198,8 @@ pub struct CreateUserForm {
 pub struct UpdateUserForm {
     #[validate(length(min = 3, message = "Username must be at least 3 characters long"))]
     username: Option<String>,
+    #[validate(email(message = "Invalid email format"))]
+    email: Option<String>,
     #[validate(length(min = 8, message = "Password must be at least 8 characters long"))]
     password: Option<String>,
     _user_type_id: Option<i64>,

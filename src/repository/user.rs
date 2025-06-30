@@ -18,13 +18,15 @@ impl UserRepository {
     pub async fn create(
         &self,
         username: String,
+        email: Option<String>,
         password_hash: String,
         user_type_id: i64,
         is_active: bool,
     ) -> Result<i64, AppError> {
         let result = sqlx::query!(
-            "INSERT INTO admin_user (username, password_hash, user_type_id, is_active) VALUES (?, ?, ?, ?) RETURNING id",
+            "INSERT INTO admin_user (username, email, password_hash, user_type_id, is_active) VALUES (?, ?, ?, ?, ?) RETURNING id",
             username,
+            email,
             password_hash,
             user_type_id,
             is_active
@@ -93,21 +95,96 @@ impl UserRepository {
     }
 
     pub async fn find_by_id(&self, id: i64) -> Result<UserResponse, AppError> {
-        let user = sqlx::query_as!(AdminUser, "SELECT * FROM admin_user WHERE id = ?", id)
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|_| AppError::NotFound("User not found".to_string()))?;
+        let user = sqlx::query_as!(
+            AdminUser,
+            r#"
+            SELECT id, username, password_hash, email, user_type_id, is_active, 
+                   last_login_at, created_at, updated_at
+            FROM admin_user 
+            WHERE id = ?"#,
+            id
+        )
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|_| AppError::NotFound("User not found".to_string()))?;
 
         Ok(UserResponse::from(user))
     }
 
     pub async fn update_last_login(&self, user_id: i64) -> Result<(), AppError> {
         sqlx::query!(
-            "UPDATE admin_user SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?",
+            "UPDATE admin_user SET last_login_at = datetime('now') WHERE id = ?",
             user_id
         )
         .execute(&*self.pool)
         .await?;
+        Ok(())
+    }
+
+    pub async fn update_user(
+        &self,
+        id: i64,
+        username: Option<String>,
+        email: Option<String>,
+        password_hash: Option<String>,
+        user_type_id: Option<i64>,
+        is_active: Option<bool>,
+    ) -> Result<(), AppError> {
+        let mut updates = Vec::new();
+        let mut args = sqlx::sqlite::SqliteArguments::default();
+
+        if let Some(username) = username {
+            updates.push("username = ?");
+            args.add(username).expect("Failed to add username");
+        }
+
+        if let Some(email) = email {
+            updates.push("email = ?");
+            args.add(email).expect("Failed to add email");
+        }
+
+        if let Some(password_hash) = password_hash {
+            updates.push("password_hash = ?");
+            args.add(password_hash)
+                .expect("Failed to add password_hash");
+        }
+
+        if let Some(user_type_id) = user_type_id {
+            updates.push("user_type_id = ?");
+            args.add(user_type_id).expect("Failed to add user type id");
+        }
+
+        if let Some(is_active) = is_active {
+            updates.push("is_active = ?");
+            args.add(is_active).expect("Failed to add is_active");
+        }
+
+        if updates.is_empty() {
+            return Ok(());
+        }
+
+        let query_str = format!("UPDATE admin_user SET {} WHERE id = ?", updates.join(", "));
+        args.add(id).expect("Failed to add id");
+
+        let result = sqlx::query_with(&query_str, args)
+            .execute(&*self.pool)
+            .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::NotFound("User not found".to_string()));
+        }
+
+        Ok(())
+    }
+
+    pub async fn delete_user(&self, id: i64) -> Result<(), AppError> {
+        let result = sqlx::query!("DELETE FROM admin_user WHERE id = ?", id)
+            .execute(&*self.pool)
+            .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::NotFound("User not found".to_string()));
+        }
 
         Ok(())
     }
@@ -134,14 +211,43 @@ impl UserRepository {
     }
 
     pub async fn count_active_users(&self) -> Result<i64, AppError> {
-        let result = sqlx::query_scalar!(
-            r#"
-            SELECT COUNT(*) as count FROM admin_user WHERE is_active = true
-            "#
+        let count = sqlx::query_scalar!("SELECT COUNT(*) FROM admin_user WHERE is_active = true")
+            .fetch_one(&*self.pool)
+            .await?;
+        Ok(count)
+    }
+
+    pub async fn exists_by_email(&self, email: &str) -> Result<bool, AppError> {
+        let exists = sqlx::query_scalar!(
+            "SELECT EXISTS(SELECT 1 FROM admin_user WHERE email = ?)",
+            email
         )
         .fetch_one(&*self.pool)
-        .await?;
+        .await?
+            > 0;
 
-        Ok(result)
+        Ok(exists)
+    }
+
+    pub async fn is_email_in_use(
+        &self,
+        email: &str,
+        exclude_user_id: Option<i64>,
+    ) -> Result<bool, AppError> {
+        let exists = match exclude_user_id {
+            Some(id) => {
+                sqlx::query_scalar!(
+                    "SELECT EXISTS(SELECT 1 FROM admin_user WHERE email = ? AND id != ?)",
+                    email,
+                    id
+                )
+                .fetch_one(&*self.pool)
+                .await?
+                    == 1
+            }
+            None => self.exists_by_email(email).await?,
+        };
+
+        Ok(exists)
     }
 }

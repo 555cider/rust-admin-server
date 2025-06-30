@@ -71,21 +71,29 @@ impl AuthRepository {
     pub async fn create_user(
         &self,
         username: String,
+        email: Option<String>,
         password_hash: String,
         user_type_id: i64,
         is_active: bool,
     ) -> Result<i64, AppError> {
         let user = sqlx::query_as!(
             AdminUser,
-            r#"INSERT INTO admin_user (username, password_hash, user_type_id, is_active, created_at, updated_at)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                RETURNING id as "id!", username as "username!", password_hash as "password_hash!", 
-                user_type_id, is_active as "is_active!", last_login_at, 
-                created_at as "created_at!", updated_at as "updated_at!""#,
-            username,
-            password_hash,
-            user_type_id,
-            is_active
+            r#"INSERT INTO admin_user (username, email, password_hash, user_type_id, is_active, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                RETURNING id as "id!"
+                , username as "username!"
+                , email as "email!"
+                , password_hash as "password_hash!"
+                , user_type_id
+                , is_active as "is_active!"
+                , last_login_at
+                , created_at as "created_at!"
+                , updated_at as "updated_at!""#
+            , username
+            , email
+            , password_hash
+            , user_type_id
+            , is_active
         )
         .fetch_one(&*self.pool)
         .await?;

@@ -1,6 +1,9 @@
 use crate::{
     errors::AppError,
-    model::dto::{common::ListQueryParams, user::CreateUserRequest},
+    model::dto::{
+        common::ListQueryParams,
+        user::{CreateUserRequest, UpdateUserRequest},
+    },
     AppState,
 };
 use axum::{
@@ -11,11 +14,15 @@ use axum::{
     Router,
 };
 use std::sync::Arc;
+use validator::Validate;
 
 pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .route("/", get(get_user).post(post_user))
-        .route("/{id}", get(get_user_by_id))
+        .route(
+            "/{id}",
+            get(get_user_by_id).put(update_user).delete(delete_user),
+        )
 }
 
 async fn post_user(
@@ -40,4 +47,25 @@ async fn get_user_by_id(
 ) -> Result<impl IntoResponse, AppError> {
     let response = state.service.user_service.get_user_by_id(id).await?;
     Ok((StatusCode::OK, Json(response)).into_response())
+}
+
+async fn update_user(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+    Json(req): Json<UpdateUserRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    req.validate()?;
+
+    state.service.user_service.update_user(id, req).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn delete_user(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<impl IntoResponse, AppError> {
+    state.service.user_service.delete_user(id).await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
