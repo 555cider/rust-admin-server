@@ -17,9 +17,10 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tracing::{debug, error, info};
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .layer(middleware::from_fn(auth))
         .route("/recent", get(recent_history_page))
@@ -56,7 +57,7 @@ struct TemplateContext {
 }
 
 async fn history_page(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
     Query(params): Query<HistoryQueryParams>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -64,7 +65,7 @@ async fn history_page(
     debug!("Query params: {:?}", params);
 
     // Get current user data
-    let _current_user = match state.service.user.get_user_by_id(user_id.0).await {
+    let _current_user = match state.service.user_service.get_user_by_id(user_id.0).await {
         Ok(user) => {
             debug!("Found user: {:?}", user);
             Some(user)
@@ -120,7 +121,7 @@ async fn history_page(
     // Get history with pagination
     let history = match state
         .service
-        .history
+        .history_service
         .get_recent_history(query.clone())
         .await
     {
@@ -139,7 +140,12 @@ async fn history_page(
     count_query.offset = None;
 
     // Use the service's method to get the total count
-    let total = match state.service.history.count_history(&count_query).await {
+    let total = match state
+        .service
+        .history_service
+        .count_history(&count_query)
+        .await
+    {
         Ok(total) => total,
         Err(e) => {
             error!("Error counting history: {}", e);
@@ -204,7 +210,7 @@ async fn history_page(
     };
 
     // Get current user information
-    let current_user = match state.service.user.get_user_by_id(user_id.0).await {
+    let current_user = match state.service.user_service.get_user_by_id(user_id.0).await {
         Ok(user) => Some(user),
         Err(e) => {
             error!("Failed to get current user: {}", e);
@@ -244,11 +250,16 @@ async fn history_page(
 
 /// Recent history page
 async fn recent_history_page(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
 ) -> Result<impl IntoResponse, AppError> {
     // Get current user data
-    let current_user = state.service.user.get_user_by_id(user_id.0).await.ok();
+    let current_user = state
+        .service
+        .user_service
+        .get_user_by_id(user_id.0)
+        .await
+        .ok();
     // Create a simple query to get recent history
     let query = HistoryListQuery {
         page: Some(1),
@@ -263,7 +274,11 @@ async fn recent_history_page(
         offset: None,
     };
 
-    let history = state.service.history.get_recent_history(query).await?;
+    let history = state
+        .service
+        .history_service
+        .get_recent_history(query)
+        .await?;
     let total = history.len() as i64;
 
     let context = TemplateContext {
@@ -286,14 +301,19 @@ async fn recent_history_page(
 
 /// History detail page
 async fn history_detail_page(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
     Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
     // Get current user data
-    let current_user = state.service.user.get_user_by_id(user_id.0).await.ok();
+    let current_user = state
+        .service
+        .user_service
+        .get_user_by_id(user_id.0)
+        .await
+        .ok();
     // Get the history by ID
-    let _history = match state.service.history.get_history_by_id(id).await? {
+    let _history = match state.service.history_service.get_history_by_id(id).await? {
         Some(history) => history,
         None => return Err(AppError::NotFound("History not found".to_string())),
     };

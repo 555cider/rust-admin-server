@@ -15,10 +15,11 @@ use axum::{
     routing::get,
     Router,
 };
+use std::sync::Arc;
 use tera::Context;
 use tracing::error;
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .nest("/auth", auth::route())
         .nest("/dashboard", dashboard::route())
@@ -32,9 +33,9 @@ pub fn route() -> Router<AppState> {
         .route("/favicon.ico", get(|| async { StatusCode::NOT_FOUND }))
 }
 
-async fn index(State(config): State<AppState>) -> impl IntoResponse {
+async fn index(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let context = Context::new();
-    match config.tera.render("index.html", &context) {
+    match state.tera.render("index.html", &context) {
         Ok(s) => Html(s).into_response(),
         Err(e) => {
             error!("Template rendering error: {}", e);

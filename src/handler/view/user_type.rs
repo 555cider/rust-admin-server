@@ -2,9 +2,8 @@ use crate::{
     errors::AppError,
     filter::{auth, UserId},
     model::dto::{
-        common::ListQueryParams,
-        user::UserResponse,
-        user_type::{CreateUserTypeRequest, UpdateUserTypeRequest, UserTypeResponse},
+        common::ListQueryParams, user::UserResponse, user_type::CreateUserTypeRequest,
+        user_type::UpdateUserTypeRequest, user_type::UserTypeResponse,
     },
     util::template_util,
     AppState,
@@ -17,9 +16,10 @@ use axum::{
     Extension, Router,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tera::Context;
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .layer(middleware::from_fn(auth))
         .route("/", get(user_type_list).post(create_user_type))
@@ -83,12 +83,17 @@ impl From<TemplateContext> for Context {
 // Using template_util::render_template instead of local implementation
 
 pub async fn user_type_list(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
     Query(query): Query<UserTypeListQuery>,
 ) -> Result<Response, AppError> {
     // Get current user info for the template
-    let current_user = state.service.user.get_user_by_id(user_id.0).await.ok();
+    let current_user = state
+        .service
+        .user_service
+        .get_user_by_id(user_id.0)
+        .await
+        .ok();
 
     // Set up pagination
     let page = query.page.unwrap_or(1).max(1);
@@ -107,7 +112,7 @@ pub async fn user_type_list(
 
     let user_types = state
         .service
-        .user_type
+        .user_type_service
         .get_user_type_array(query_params)
         .await?;
 
@@ -138,10 +143,15 @@ pub async fn user_type_list(
 }
 
 pub async fn user_type_create_page(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
 ) -> Result<Response, AppError> {
-    let current_user = state.service.user.get_user_by_id(user_id.0).await.ok();
+    let current_user = state
+        .service
+        .user_service
+        .get_user_by_id(user_id.0)
+        .await
+        .ok();
 
     let context = TemplateContext {
         title: "사용자 유형 생성",
@@ -164,14 +174,19 @@ pub async fn user_type_create_page(
 }
 
 pub async fn user_type_edit_page(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
     Path(user_type_id): Path<i64>,
 ) -> Result<Response, AppError> {
-    let current_user = state.service.user.get_user_by_id(user_id.0).await.ok();
+    let current_user = state
+        .service
+        .user_service
+        .get_user_by_id(user_id.0)
+        .await
+        .ok();
     let user_type = state
         .service
-        .user_type
+        .user_type_service
         .get_user_type_by_id(user_type_id)
         .await?;
 
@@ -196,36 +211,40 @@ pub async fn user_type_edit_page(
 }
 
 pub async fn create_user_type(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(_user_id): Extension<UserId>,
     Form(payload): Form<CreateUserTypeRequest>,
 ) -> Result<Response, AppError> {
-    state.service.user_type.create_user_type(payload).await?;
+    state
+        .service
+        .user_type_service
+        .create_user_type(payload)
+        .await?;
     Ok(Redirect::to("/user-types").into_response())
 }
 
 pub async fn update_user_type(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(_user_id): Extension<UserId>,
     Path(user_type_id): Path<i64>,
     Form(payload): Form<UpdateUserTypeRequest>,
 ) -> Result<Response, AppError> {
     state
         .service
-        .user_type
+        .user_type_service
         .update_user_type(user_type_id, payload)
         .await?;
     Ok(Redirect::to("/user-types").into_response())
 }
 
 pub async fn delete_user_type(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(_user_id): Extension<UserId>,
     Path(user_type_id): Path<i64>,
 ) -> Result<Response, AppError> {
     state
         .service
-        .user_type
+        .user_type_service
         .delete_user_type(user_type_id)
         .await?;
     Ok(Redirect::to("/user-types").into_response())

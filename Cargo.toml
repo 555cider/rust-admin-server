@@ -55,3 +55,4 @@ dotenvy = "0.15.7"
 
 # Validation
 validator = { version = "0.20.0", features = ["derive"] }
+rand = "0.8.5"

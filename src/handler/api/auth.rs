@@ -14,9 +14,10 @@ use axum::{
 use axum_extra::{headers::UserAgent, TypedHeader};
 use http::{header, header::HeaderValue, HeaderMap, StatusCode};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tracing::info;
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .route("/login", post(post_auth_login))
         .route("/refresh", post(post_auth_refresh))
@@ -25,7 +26,7 @@ pub fn route() -> Router<AppState> {
 }
 
 async fn post_auth_login(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     Form(mut req): Form<LoginRequest>,
@@ -41,7 +42,7 @@ async fn post_auth_login(
 
     let (access_token, refresh_token) = state
         .service
-        .auth
+        .auth_service
         .login(&state.config, req, ip_address, user_agent)
         .await?;
 
@@ -76,7 +77,7 @@ async fn post_auth_login(
 }
 
 async fn post_auth_refresh(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     request: Request,
@@ -90,7 +91,7 @@ async fn post_auth_refresh(
 
     let (access_token, new_refresh_token) = state
         .service
-        .auth
+        .auth_service
         .refresh_access_token(
             &state.config,
             refresh_token.to_string(),
@@ -124,15 +125,19 @@ async fn post_auth_refresh(
 }
 
 async fn get_auth_me(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     current_user: AuthnUser,
 ) -> Result<Json<CurrentUserResponse>, AppError> {
-    let response = state.service.auth.get_current_user(current_user).await?;
+    let response = state
+        .service
+        .auth_service
+        .get_current_user(current_user)
+        .await?;
     Ok(Json(response))
 }
 
 async fn post_auth_register(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     Form(req): Form<RegisterRequest>,
@@ -144,7 +149,7 @@ async fn post_auth_register(
 
     let user_id = state
         .service
-        .auth
+        .auth_service
         .register(req, ip_address, user_agent)
         .await?;
 

@@ -6,10 +6,11 @@ use axum::{
     routing::get,
     Router,
 };
+use std::sync::Arc;
 use tera::Context;
 use tracing::{debug, error, info};
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .layer(middleware::from_fn(auth))
         .route("/", get(settings_page))
@@ -39,13 +40,13 @@ impl From<TemplateContext> for Context {
 }
 
 async fn settings_page(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
 ) -> Result<impl IntoResponse, AppError> {
     info!("Starting settings page handler for user_id: {}", user_id.0);
 
     // Get current user data with detailed error handling
-    let current_user = match state.service.user.get_user_by_id(user_id.0).await {
+    let current_user = match state.service.user_service.get_user_by_id(user_id.0).await {
         Ok(user) => {
             debug!("Found user: {:?}", user);
             Some(user)

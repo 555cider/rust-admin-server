@@ -8,17 +8,18 @@ use axum::{
 };
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tera::Context;
 use tracing::{debug, error};
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .route("/login", get(login_page).post(login_handler))
         .route("/register", get(register_page))
 }
 
 async fn login_page(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Query(query): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
     let mut context = Context::new();
@@ -29,7 +30,7 @@ async fn login_page(
         context.insert("error", error_message);
     }
 
-    match config.tera.render("login.html", &context) {
+    match state.tera.render("login.html", &context) {
         Ok(s) => Html(s).into_response(),
         Err(e) => {
             error!("Template rendering error: {}", e);
@@ -43,7 +44,7 @@ async fn login_page(
 }
 
 async fn login_handler(
-    State(_config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Form(_form): Form<LoginForm>,
 ) -> impl IntoResponse {
     // TODO: Implement actual authentication
@@ -53,12 +54,12 @@ async fn login_handler(
     Redirect::to("/dashboard").into_response()
 }
 
-async fn register_page(State(config): State<AppState>) -> impl IntoResponse {
+async fn register_page(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let mut context = Context::new();
     context.insert("title", "회원가입");
     context.insert("active_page", "register");
 
-    match config.tera.render("register.html", &context) {
+    match state.tera.render("register.html", &context) {
         Ok(s) => Html(s).into_response(),
         Err(e) => {
             error!("Template rendering error: {}", e);

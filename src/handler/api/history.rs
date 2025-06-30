@@ -13,6 +13,7 @@ use axum::{
 };
 use chrono::Utc;
 use serde_json::json;
+use std::sync::Arc;
 use tracing::info;
 use uuid::Uuid;
 
@@ -20,33 +21,25 @@ use uuid::Uuid;
 const DEFAULT_RETENTION_DAYS: i64 = 90;
 
 /// Create router for history endpoints
-pub fn routes() -> Router<AppState> {
-    // Create a route group with the auth middleware
-    let history_routes = Router::new()
-        // List all history with pagination and filtering
+pub fn route() -> Router<Arc<AppState>> {
+    Router::new()
         .route(
             "/",
             get(|state, auth, query| list_history(state, auth, query)),
         )
-        // Get recent history
         .route(
             "/recent",
             get(|state, auth, query| get_recent_history(state, auth, query)),
         )
-        // Get a specific history by ID
         .route(
             "/{id}",
             get(|state, auth, path| get_history(state, auth, path)),
         )
-        // Clean up old history
         .route(
             "/cleanup",
             delete(|state, auth, params| cleanup_old_logs(state, auth, params)),
         )
-        .layer(from_fn(auth));
-
-    // Return the history routes
-    history_routes
+        .layer(from_fn(auth))
 }
 
 /// List history with pagination and filtering
@@ -66,7 +59,7 @@ pub fn routes() -> Router<AppState> {
 /// - Admin users can view all history
 /// - Regular users can only view their own history
 async fn list_history(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(auth): Extension<Option<UserId>>,
     Query(mut query): Query<HistoryListQuery>,
 ) -> Result<Json<serde_json::Value>, AppError> {
@@ -78,7 +71,7 @@ async fn list_history(
     // Check if user has admin role
     let has_permission = state
         .service
-        .permission
+        .permission_service
         .has_permission(user_id.0, "history:read_all")
         .await?;
 
@@ -90,7 +83,7 @@ async fn list_history(
     // Get paginated logs from the service
     let logs = state
         .service
-        .history
+        .history_service
         .get_recent_history(query.clone())
         .await?;
 
@@ -138,7 +131,7 @@ async fn list_history(
 /// - Admin users can view all history
 /// - Regular users can only view their own history
 async fn get_recent_history(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(auth): Extension<Option<UserId>>,
     Query(mut query): Query<HistoryListQuery>,
 ) -> Result<Json<serde_json::Value>, AppError> {
@@ -158,7 +151,7 @@ async fn get_recent_history(
     // Check if user has admin role
     let has_permission = state
         .service
-        .permission
+        .permission_service
         .has_permission(user_id.0, "history:read_all")
         .await?;
 
@@ -168,7 +161,11 @@ async fn get_recent_history(
     }
 
     // Get paginated logs from the service
-    let logs = state.service.history.get_recent_history(query).await?;
+    let logs = state
+        .service
+        .history_service
+        .get_recent_history(query)
+        .await?;
 
     let response = json!({
         "success": true,
@@ -186,7 +183,7 @@ async fn get_recent_history(
 /// - Admin users can view any history
 /// - Regular users can only view their own history
 async fn get_history(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(auth): Extension<Option<UserId>>,
     Path(id): Path<i64>,
 ) -> Result<Json<serde_json::Value>, AppError> {
@@ -198,7 +195,7 @@ async fn get_history(
     // Get the history
     let log = state
         .service
-        .history
+        .history_service
         .get_history_by_id(id)
         .await?
         .ok_or_else(|| AppError::NotFound("History not found".to_string()))?;
@@ -206,7 +203,7 @@ async fn get_history(
     // Check if user has permission to read all history
     let has_permission = state
         .service
-        .permission
+        .permission_service
         .has_permission(user_id.0, "history:read_all")
         .await?;
 
@@ -238,7 +235,7 @@ async fn get_history(
 /// # Permissions
 /// - Requires admin privileges
 async fn cleanup_old_logs(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(auth): Extension<Option<UserId>>,
     Query(params): Query<std::collections::HashMap<String, i64>>,
 ) -> Result<Json<serde_json::Value>, AppError> {
@@ -249,7 +246,7 @@ async fn cleanup_old_logs(
     // Check if user has permission to delete logs
     let has_permission = state
         .service
-        .permission
+        .permission_service
         .has_permission(user_id.0, "history:delete")
         .await
         .unwrap_or(false); // Default to false if there's an error
@@ -280,7 +277,7 @@ async fn cleanup_old_logs(
     );
 
     // Delete old logs
-    let deleted = state.service.history.cleanup_old_logs(days).await?;
+    let deleted = state.service.history_service.cleanup_old_logs(days).await?;
 
     info!(
         "User {} completed cleanup of {} old history",

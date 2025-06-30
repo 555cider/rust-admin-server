@@ -9,10 +9,11 @@ use axum::{
     Router,
 };
 use serde::Serialize;
+use std::sync::Arc;
 use tera::Context;
 use tracing::error;
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .layer(middleware::from_fn(auth))
         .route("/", get(profile_page))
@@ -40,11 +41,16 @@ impl From<TemplateContext> for Context {
 }
 
 async fn profile_page(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
 ) -> Result<impl IntoResponse, AppError> {
     // Get current user data
-    let current_user = state.service.user.get_user_by_id(user_id.0).await.ok();
+    let current_user = state
+        .service
+        .user_service
+        .get_user_by_id(user_id.0)
+        .await
+        .ok();
 
     let context = TemplateContext {
         title: "프로필",

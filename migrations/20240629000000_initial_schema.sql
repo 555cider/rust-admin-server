@@ -95,6 +95,49 @@ CREATE TABLE IF NOT EXISTS history (
 );
 
 -- =============================================
+-- 8. OAuth2 Clients
+-- =============================================
+CREATE TABLE IF NOT EXISTS oauth_client (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id     TEXT NOT NULL UNIQUE,
+    client_secret TEXT NOT NULL,
+    redirect_uri  TEXT NOT NULL,
+    scope         TEXT,
+    grant_types   TEXT,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- =============================================
+-- 9. OAuth2 Authorization Codes
+-- =============================================
+CREATE TABLE IF NOT EXISTS oauth_code (
+    code         TEXT PRIMARY KEY,
+    client_id    TEXT NOT NULL REFERENCES oauth_client(client_id) ON DELETE CASCADE,
+    user_id      INTEGER,
+    redirect_uri TEXT NOT NULL,
+    scope        TEXT,
+    expires_at   DATETIME NOT NULL,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- =============================================
+-- 10. OAuth2 Tokens
+-- =============================================
+CREATE TABLE IF NOT EXISTS oauth_token (
+    access_token  TEXT PRIMARY KEY,
+    refresh_token TEXT,
+    client_id     TEXT NOT NULL REFERENCES oauth_client(client_id) ON DELETE CASCADE,
+    user_id       INTEGER,
+    scope         TEXT,
+    expires_at    DATETIME NOT NULL,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 초기 클라이언트 예시
+INSERT OR IGNORE INTO oauth_client (client_id, client_secret, redirect_uri, scope, grant_types) VALUES
+('test-client', 'test-secret', 'http://localhost:8080/callback', 'read write', 'authorization_code,client_credentials,refresh_token');
+
+-- =============================================
 -- Indexes
 -- =============================================
 -- Admin User Indexes
@@ -199,7 +242,7 @@ INSERT INTO admin_user (username, password_hash, user_type_id, is_active)
 SELECT 
     'admin', 
     -- bcrypt hash for 'admin123'
-    '$2b$12$LQv3c1yNPlrxEEe4eJXZ.O9BKWrZwvsMQd.mBm9H7H4/4t3VZQ7Qa',
+    '$2a$12$8K3mitisuL4ddezwjDsx7O/9lLVOrCXPRJJxDWYIjuwyJFpRwJGKq',
     (SELECT id FROM user_type WHERE code = 'super_admin' LIMIT 1),
     1
 WHERE NOT EXISTS (SELECT 1 FROM admin_user WHERE username = 'admin');

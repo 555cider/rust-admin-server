@@ -74,7 +74,7 @@ JWT를 사용한 인증 시스템이 구현되어 있습니다. 인증 미들웨
 ```rust
 use axum::middleware;
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .layer(middleware::from_fn(auth))
         .route("/", get(handler))

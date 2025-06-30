@@ -10,33 +10,34 @@ use axum::{
     routing::get,
     Router,
 };
+use std::sync::Arc;
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .route("/", get(get_user).post(post_user))
         .route("/{id}", get(get_user_by_id))
 }
 
 async fn post_user(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Json(req): Json<CreateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let response = config.service.user.create_user(req).await?;
+    let response = state.service.user_service.create_user(req).await?;
     Ok((StatusCode::CREATED, Json(response)).into_response())
 }
 
 async fn get_user(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Query(query): Query<ListQueryParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    let response = config.service.user.get_user_array(query).await?;
+    let response = state.service.user_service.get_user_array(query).await?;
     Ok((StatusCode::OK, Json(response)).into_response())
 }
 
 async fn get_user_by_id(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
-    let response = config.service.user.get_user_by_id(id).await?;
+    let response = state.service.user_service.get_user_by_id(id).await?;
     Ok((StatusCode::OK, Json(response)).into_response())
 }

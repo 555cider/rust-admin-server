@@ -66,11 +66,11 @@ async fn async_main() -> anyhow::Result<()> {
     // Initialize template engine
     tracing::debug!("템플릿 엔진을 초기화합니다.");
     let tera = match template::setup_tera() {
-        Ok(tera) => tera,
+        Ok(t) => t,
         Err(e) => {
             tracing::warn!("기본 템플릿 로딩 실패: {}", e);
             tracing::info!("대체 템플릿 로더를 시도합니다...");
-            template::setup_tera_with_fallback().context("템플릿 엔진 초기화 실패")?
+            template::setup_tera_with_fallback()?
         }
     };
 
@@ -81,31 +81,27 @@ async fn async_main() -> anyhow::Result<()> {
     // Initialize service container
     let service = ServiceContainer::new(Arc::from(db_pool.clone()));
 
-    // Create application state
-    let app_state = AppState {
+    // Create application state wrapped in Arc
+    let app_state = Arc::new(AppState {
         config,
         pool: db_pool,
         tera: tera_arc,
         service,
-    };
+    });
 
     // Configure router and middleware
     let app = Router::new()
         .merge(handler::route())
-        .with_state(app_state.clone())
+        .with_state(Arc::clone(&app_state))
         .layer(
             ServiceBuilder::new()
-                .layer(
-                    ServiceBuilder::new()
-                        .layer(SetRequestIdLayer::new(
-                            HeaderName::from_static("x-request-id"),
-                            request_id::MakeRequestUuid,
-                        ))
-                        .layer(PropagateRequestIdLayer::new(HeaderName::from_static(
-                            "x-request-id",
-                        )))
-                        .into_inner(),
-                )
+                .layer(SetRequestIdLayer::new(
+                    HeaderName::from_static("x-request-id"),
+                    request_id::MakeRequestUuid,
+                ))
+                .layer(PropagateRequestIdLayer::new(HeaderName::from_static(
+                    "x-request-id",
+                )))
                 .layer(SetSensitiveRequestHeadersLayer::new(vec![
                     HeaderName::from_static("authorization"),
                 ]))

@@ -9,11 +9,12 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::json;
+use std::sync::Arc;
 use tera::Context;
 use tracing::error;
 use validator::Validate;
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .layer(middleware::from_fn(auth))
         .route("/", get(permissions_page))
@@ -22,7 +23,7 @@ pub fn route() -> Router<AppState> {
 }
 
 async fn permissions_page(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
 ) -> impl IntoResponse {
     let mut context = Context::new();
@@ -31,11 +32,11 @@ async fn permissions_page(
     context.insert("user_id", &user_id.0);
 
     // Add current user info for the template
-    if let Ok(current_user) = config.service.user.get_user_by_id(user_id.0).await {
+    if let Ok(current_user) = state.service.user_service.get_user_by_id(user_id.0).await {
         context.insert("current_user", &current_user);
     }
 
-    match config.tera.render("permission.html", &context) {
+    match state.tera.render("permission.html", &context) {
         Ok(s) => Html(s).into_response(),
         Err(e) => {
             error!("Template rendering error: {}", e);
@@ -49,7 +50,7 @@ async fn permissions_page(
 }
 
 async fn permission_create_page(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
 ) -> impl IntoResponse {
     let mut context = Context::new();
@@ -58,7 +59,7 @@ async fn permission_create_page(
     context.insert("user_id", &user_id.0);
 
     // Add current user info for the template
-    if let Ok(current_user) = config.service.user.get_user_by_id(user_id.0).await {
+    if let Ok(current_user) = state.service.user_service.get_user_by_id(user_id.0).await {
         context.insert("current_user", &current_user);
     }
 
@@ -70,7 +71,7 @@ async fn permission_create_page(
     });
     context.insert("permission", &permission);
 
-    match config.tera.render("permission_form.html", &context) {
+    match state.tera.render("permission_form.html", &context) {
         Ok(s) => Html(s).into_response(),
         Err(e) => {
             error!("Template rendering error: {}\nContext: {:#?}", e, context);
@@ -84,7 +85,7 @@ async fn permission_create_page(
 }
 
 async fn permission_edit_page(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
     Path(permission_id): Path<i32>,
     headers: HeaderMap,
@@ -95,14 +96,14 @@ async fn permission_edit_page(
     context.insert("user_id", &user_id.0);
 
     // Add current user info for the template
-    if let Ok(current_user) = config.service.user.get_user_by_id(user_id.0).await {
+    if let Ok(current_user) = state.service.user_service.get_user_by_id(user_id.0).await {
         context.insert("current_user", &current_user);
     }
 
     // Get permission data
-    match config
+    match state
         .service
-        .permission
+        .permission_service
         .get_permission_by_id(permission_id)
         .await
     {
@@ -110,7 +111,7 @@ async fn permission_edit_page(
             tracing::debug!("Successfully retrieved permission: {:?}", permission);
             context.insert("permission", &permission);
 
-            match config.tera.render("permission_form.html", &context) {
+            match state.tera.render("permission_form.html", &context) {
                 Ok(s) => Html(s).into_response(),
                 Err(e) => {
                     error!("Template rendering error: {}\nContext: {:#?}", e, context);
@@ -146,7 +147,7 @@ async fn permission_edit_page(
             error_context.insert("error_message", &error_message);
             error_context.insert("back_url", "/permission");
 
-            if let Ok(html) = config.tera.render("error.html", &error_context) {
+            if let Ok(html) = state.tera.render("error.html", &error_context) {
                 (StatusCode::NOT_FOUND, Html(html)).into_response()
             } else {
                 (StatusCode::NOT_FOUND, error_message).into_response()

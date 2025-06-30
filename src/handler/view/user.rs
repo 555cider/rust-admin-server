@@ -12,12 +12,12 @@ use axum::{
     Router,
 };
 use serde::Deserialize;
-use std::error::Error;
+use std::{error::Error, sync::Arc};
 use tera::Context;
 use tracing::error;
 use validator::Validate;
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .layer(middleware::from_fn(auth))
         .route("/", get(users_page))
@@ -26,7 +26,7 @@ pub fn route() -> Router<AppState> {
 }
 
 async fn users_page(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(_user_id): Extension<UserId>,
 ) -> impl IntoResponse {
     let mut context = Context::new();
@@ -35,11 +35,11 @@ async fn users_page(
     context.insert("user_id", &_user_id.0);
 
     // Add current user info for the template
-    if let Ok(current_user) = config.service.user.get_user_by_id(_user_id.0).await {
+    if let Ok(current_user) = state.service.user_service.get_user_by_id(_user_id.0).await {
         context.insert("current_user", &current_user);
     }
 
-    match config.tera.render("user.html", &context) {
+    match state.tera.render("user.html", &context) {
         Ok(s) => Html(s).into_response(),
         Err(e) => {
             // Log the full error chain for better debugging
@@ -67,7 +67,7 @@ async fn users_page(
 }
 
 async fn user_create_page(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
 ) -> impl IntoResponse {
     let mut context = Context::new();
@@ -76,14 +76,14 @@ async fn user_create_page(
     context.insert("user_id", &user_id.0);
 
     // Add current user info for the template
-    if let Ok(current_user) = config.service.user.get_user_by_id(user_id.0).await {
+    if let Ok(current_user) = state.service.user_service.get_user_by_id(user_id.0).await {
         context.insert("current_user", &current_user);
     }
 
     // Get user types for the form
-    match config
+    match state
         .service
-        .user_type
+        .user_type_service
         .get_user_type_array(ListQueryParams::default())
         .await
     {
@@ -96,7 +96,7 @@ async fn user_create_page(
         }
     }
 
-    match config.tera.render("user_form.html", &context) {
+    match state.tera.render("user_form.html", &context) {
         Ok(s) => Html(s).into_response(),
         Err(e) => {
             error!("Template rendering error: {}", e);
@@ -110,7 +110,7 @@ async fn user_create_page(
 }
 
 async fn user_edit_page(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
     Path(id): Path<i64>,
 ) -> impl IntoResponse {
@@ -120,12 +120,12 @@ async fn user_edit_page(
     context.insert("user_id", &user_id.0);
 
     // Add current user info for the template
-    if let Ok(current_user) = config.service.user.get_user_by_id(user_id.0).await {
+    if let Ok(current_user) = state.service.user_service.get_user_by_id(user_id.0).await {
         context.insert("current_user", &current_user);
     }
 
     // Get user data
-    match config.service.user.get_user_by_id(id).await {
+    match state.service.user_service.get_user_by_id(id).await {
         Ok(user_data) => {
             // Convert the user data to a format the template can use
             let user = serde_json::json!({
@@ -140,9 +140,9 @@ async fn user_edit_page(
             context.insert("user", &user);
 
             // Get user types for the form
-            match config
+            match state
                 .service
-                .user_type
+                .user_type_service
                 .get_user_type_array(ListQueryParams::default())
                 .await
             {
@@ -155,7 +155,7 @@ async fn user_edit_page(
                 }
             }
 
-            match config.tera.render("user_form.html", &context) {
+            match state.tera.render("user_form.html", &context) {
                 Ok(s) => Html(s).into_response(),
                 Err(e) => {
                     error!("Template rendering error: {}", e);

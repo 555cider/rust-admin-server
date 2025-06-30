@@ -12,9 +12,10 @@ use axum::{
     Router,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tera::Context;
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .layer(middleware::from_fn(auth))
         .route("/", get(dashboard_page))
@@ -49,12 +50,17 @@ pub struct DashboardQuery {
 }
 
 pub async fn dashboard_page(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Extension(user_id): Extension<UserId>,
     Query(query): Query<DashboardQuery>,
 ) -> Result<impl IntoResponse, AppError> {
     // Get current user data
-    let current_user = state.service.user.get_user_by_id(user_id.0).await.ok();
+    let current_user = state
+        .service
+        .user_service
+        .get_user_by_id(user_id.0)
+        .await
+        .ok();
 
     // Get dashboard data with optional time range
     let range = query.range.as_deref().unwrap_or("day");

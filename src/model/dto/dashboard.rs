@@ -3,42 +3,6 @@ use serde::Serialize;
 use serde_with::{serde_as, DisplayFromStr};
 use sqlx::{Row, SqlitePool};
 
-mod ser {
-    use serde::{Serialize, Serializer};
-    use serde_json::Value;
-
-    #[allow(dead_code)]
-    pub fn _serialize<S>(active_percent: &Option<String>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match active_percent {
-            Some(s) => {
-                let value = serde_json::from_str(s).unwrap_or(Value::Null);
-                value.serialize(serializer)
-            }
-            None => Value::Null.serialize(serializer),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn _serialize_option<S>(
-        active_percent: &Option<String>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match active_percent {
-            Some(s) => {
-                let value = serde_json::from_str(s).unwrap_or(Value::Null);
-                Some(value).serialize(serializer)
-            }
-            None => None::<Value>.serialize(serializer),
-        }
-    }
-}
-
 #[serde_as]
 #[derive(Debug, Serialize)]
 pub struct DashboardData {
@@ -138,6 +102,11 @@ impl DashboardData {
         // Convert rows to HistoryResponse
         let mut recent_history = Vec::new();
         for row in recent_history_rows {
+            let details_str: Option<String> = row.get("details");
+            let details = match details_str {
+                Some(ref s) if !s.is_empty() => serde_json::from_str(s).ok(),
+                _ => None,
+            };
             let history = HistoryResponse {
                 id: row.get("id"),
                 user_id: row.get("user_id"),
@@ -145,7 +114,7 @@ impl DashboardData {
                 action: row.get("action"),
                 entity_id: row.get("entity_id"),
                 entity_type: None,
-                details: row.get("details"),
+                details,
                 ip_address: row.get("ip_address"),
                 created_at: row.get("created_at"),
             };
@@ -288,6 +257,11 @@ impl DashboardData {
         // Convert rows to HistoryResponse
         let mut recent_history = Vec::new();
         for row in recent_history_rows {
+            let details_str: Option<String> = row.get("details");
+            let details = match details_str {
+                Some(ref s) if !s.is_empty() => serde_json::from_str(s).ok(),
+                _ => None,
+            };
             let history = HistoryResponse {
                 id: row.get("id"),
                 user_id: row.get("user_id"),
@@ -295,7 +269,7 @@ impl DashboardData {
                 action: row.get("action"),
                 entity_id: row.get("entity_id"),
                 entity_type: None,
-                details: row.get("details"),
+                details,
                 ip_address: row.get("ip_address"),
                 created_at: row.get("created_at"),
             };

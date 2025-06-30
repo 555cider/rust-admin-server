@@ -15,8 +15,9 @@ use axum::{
     routing::get,
     Router,
 };
+use std::sync::Arc;
 
-pub fn route() -> Router<AppState> {
+pub fn route() -> Router<Arc<AppState>> {
     Router::new()
         .route("/", get(get_permission).post(post_permission))
         .route("/{id}", get(get_permission_by_id).put(update_permission))
@@ -24,34 +25,50 @@ pub fn route() -> Router<AppState> {
 }
 
 async fn post_permission(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Json(req): Json<CreatePermissionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let response = config.service.permission.create_permission(req).await?;
+    let response = state
+        .service
+        .permission_service
+        .create_permission(req)
+        .await?;
     Ok((StatusCode::CREATED, Json(response)).into_response())
 }
 
 async fn get_permission(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Query(query): Query<ListQueryParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    let response = config.service.permission.get_permissions(query).await?;
+    let response = state
+        .service
+        .permission_service
+        .get_permissions(query)
+        .await?;
     Ok((StatusCode::OK, Json(response)).into_response())
 }
 
 async fn get_permission_by_id(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, AppError> {
-    let response = config.service.permission.get_permission_by_id(id).await?;
+    let response = state
+        .service
+        .permission_service
+        .get_permission_by_id(id)
+        .await?;
     Ok((StatusCode::OK, Json(response)).into_response())
 }
 
 async fn update_permission(
-    State(config): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Path(id): Path<i32>,
     Json(req): Json<UpdatePermissionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let response = config.service.permission.update_permission(id, req).await?;
+    let response = state
+        .service
+        .permission_service
+        .update_permission(id, req)
+        .await?;
     Ok((StatusCode::OK, Json(response)).into_response())
 }
