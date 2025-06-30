@@ -23,6 +23,7 @@ pub fn route() -> Router<Arc<AppState>> {
         .route("/refresh", post(post_auth_refresh))
         .route("/me", get(get_auth_me))
         .route("/register", post(post_auth_register))
+        .route("/logout", post(post_auth_logout))
 }
 
 async fn post_auth_login(
@@ -83,7 +84,7 @@ async fn post_auth_refresh(
     request: Request,
 ) -> Result<impl IntoResponse, AppError> {
     let headers = request.headers();
-    let refresh_token = cookie_util::get_refresh_token_cookie_value(&state.config, headers)
+    let refresh_token = cookie_util::get_refresh_token(Some(&state.config), headers)
         .ok_or_else(|| AppError::Unauthorized("No refresh token provided".to_string()))?;
 
     let ip_address = Some(addr.ip().to_string());
@@ -154,4 +155,30 @@ async fn post_auth_register(
         .await?;
 
     Ok((StatusCode::CREATED, Json(user_id)))
+}
+
+async fn post_auth_logout(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, AppError> {
+    // 토큰 쿠키 삭제
+    let access_cookie = cookie_util::expire_access_token_cookie(&state.config);
+    let refresh_cookie = cookie_util::expire_refresh_token_cookie(&state.config);
+
+    // 쿠키 헤더 추가
+    let mut headers = HeaderMap::new();
+    if let Ok(access_cookie_str) = access_cookie.to_string().parse::<HeaderValue>() {
+        headers.append(header::SET_COOKIE, access_cookie_str);
+    }
+    if let Ok(refresh_cookie_str) = refresh_cookie.to_string().parse::<HeaderValue>() {
+        headers.append(header::SET_COOKIE, refresh_cookie_str);
+    }
+
+    // 클라이언트 측에서도 토큰을 제거할 수 있도록 리다이렉트 응답 반환
+    Ok((
+        headers,
+        Json(serde_json::json!({
+            "success": true,
+            "redirect": "/"
+        })),
+    ))
 }

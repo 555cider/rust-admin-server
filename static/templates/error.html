@@ -1,30 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Template Error</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
+{% extends "base.html" %}
 
-        .debug-section {
-            margin-bottom: 2rem;
-        }
+{% block title %}Template Error{% endblock %}
 
-        .debug-title {
-            font-weight: 600;
-            color: #4B5563;
-            border-bottom: 1px solid #E5E7EB;
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
-        }
-    </style>
-</head>
-<body class="bg-gray-100 p-4 md:p-8">
+{% block extra_head %}
+<style>
+    pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    .debug-section {
+        margin-bottom: 2rem;
+    }
+
+    .debug-title {
+        font-weight: 600;
+        color: #4B5563;
+        border-bottom: 1px solid #E5E7EB;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
 <div class="max-w-6xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
     <div class="bg-red-600 text-white p-4">
         <h1 class="text-2xl font-bold">Template Rendering Error</h1>
@@ -108,5 +107,4 @@
         </div>
     </div>
 </div>
-</body>
-</html>
+{% endblock %}

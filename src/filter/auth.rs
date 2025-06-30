@@ -60,7 +60,7 @@ pub async fn auth(headers: HeaderMap, mut request: Request, next: Next) -> Respo
     let token = header_util::extract_token_from_header(&headers)
         // 2. If not found in header, try to get from access_token cookie
         .map(|s| s.to_string())
-        .or_else(|| cookie_util::get_cookie_value(&headers, "access_token"));
+        .or_else(|| cookie_util::get_access_token(None, &headers));
 
     let token = match token {
         Some(token) if !token.is_empty() => token,

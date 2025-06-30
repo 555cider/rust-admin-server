@@ -1,4 +1,3 @@
-use crate::model::dto::history::HistoryResponse;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -6,45 +5,15 @@ use serde_json::Value;
 /// History entry representing user actions in the system
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct History {
-    /// Unique identifier
     pub id: i64,
-
-    /// ID of the user who performed the action (None for system actions)
     pub user_id: Option<i64>,
-
     /// Action name (e.g., "login", "create_user", "update_permission")
     pub action: String,
-
-    /// ID of the affected entity (if applicable)
     pub entity_id: Option<i64>,
-
-    /// Additional details about the action (stored as JSON string)
     pub details: Option<String>,
-
-    /// IP address of the client
     pub ip_address: Option<String>,
-
-    /// User agent of the client
     pub user_agent: Option<String>,
-
-    /// Timestamp when the action was performed
     pub created_at: DateTime<Utc>,
-}
-
-impl From<History> for HistoryResponse {
-    fn from(log: History) -> Self {
-        Self {
-            id: log.id,
-            user_id: log.user_id,
-            username: None, // Will be populated if needed
-            action: log.action,
-            entity_id: log.entity_id,
-            entity_type: None, // Will be populated if needed
-            details: log.details.and_then(|d| serde_json::from_str(&d).ok()),
-            ip_address: log.ip_address,
-            created_at: log.created_at,
-        }
-    }
 }
 
 impl History {

@@ -1,76 +1,57 @@
+use crate::model::entity::history::History;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// Default number of items per page for pagination
 const DEFAULT_PAGE_SIZE: i64 = 20;
-/// Maximum number of items per page
 const MAX_PAGE_SIZE: i64 = 100;
 
 /// Response DTO for history entries
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HistoryResponse {
-    /// Unique identifier
     pub id: i64,
-
-    /// ID of the user who performed the action (None for system actions)
     pub user_id: Option<i64>,
-
-    /// Username of the user (if available)
     pub username: Option<String>,
-
     /// Action that was performed (e.g., "login", "create_user")
     pub action: String,
-
-    /// ID of the affected entity (if applicable)
     pub entity_id: Option<i64>,
-
-    /// Type of the affected entity (if applicable)
     pub entity_type: Option<String>,
-
-    /// Additional details about the action
     pub details: Option<Value>,
-
-    /// IP address of the client
     pub ip_address: Option<String>,
-
-    /// Timestamp when the action was performed
     pub created_at: DateTime<Utc>,
+}
+
+impl From<History> for HistoryResponse {
+    fn from(log: History) -> Self {
+        Self {
+            id: log.id,
+            user_id: log.user_id,
+            username: None, // Will be populated if needed
+            action: log.action,
+            entity_id: log.entity_id,
+            entity_type: None, // Will be populated if needed
+            details: log.details.and_then(|d| serde_json::from_str(&d).ok()),
+            ip_address: log.ip_address,
+            created_at: log.created_at,
+        }
+    }
 }
 
 /// Query parameters for filtering and paginating history
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct HistoryListQuery {
-    /// Filter by user ID
     pub user_id: Option<i64>,
-
-    /// Filter by action name (e.g., "login", "create_user")
     pub action: Option<String>,
-
-    /// Filter by entity ID
     pub entity_id: Option<i64>,
-
-    /// Filter by entity type (e.g., "user", "permission")
     pub entity_type: Option<String>,
-
-    /// Filter by start date (inclusive)
     pub start_date: Option<DateTime<Utc>>,
-
-    /// Filter by end date (inclusive)
     pub end_date: Option<DateTime<Utc>>,
-
     /// Page number (1-based)
     #[serde(default = "default_page")]
     pub page: Option<i64>,
-
-    /// Number of items per page
     #[serde(default = "default_page_size", skip_serializing_if = "Option::is_none")]
     pub per_page: Option<i64>,
-
-    /// Limit for pagination (alternative to per_page)
     pub limit: Option<i64>,
-
-    /// Offset for pagination
     pub offset: Option<i64>,
 }
 

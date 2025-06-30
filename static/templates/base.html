@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Admin Dashboard{% endblock %}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -124,9 +124,11 @@
                                        role="menuitem">
                                         <i class="fas fa-cog mr-2"></i>설정
                                     </a>
-                                    <a href="/auth/logout"
-                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                       role="menuitem">로그아웃</a>
+                                    <a href="#"
+                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 logout-button"
+                                       role="menuitem" tabindex="-1" id="user-menu-item-2">
+                                        로그아웃
+                                    </a>
                                     {% else %}
                                     <a href="/auth/login"
                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -190,8 +192,10 @@
                 <div class="mt-3 space-y-1 px-2">
                     <a href="/profile"
                        class="block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-primary-500 hover:bg-opacity-75">프로필</a>
-                    <a href="/auth/logout"
-                       class="block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-primary-500 hover:bg-opacity-75">로그아웃</a>
+                    <a href="#"
+                       class="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 logout-button">
+                        로그아웃
+                    </a>
                 </div>
             </div>
             {% else %}
@@ -207,20 +211,63 @@
         </div>
     </nav>
 
-    <main class="mt-4">
-        <div class="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
-            <div class="rounded-lg bg-white py-6 shadow">
-                <div class="rounded-lg">
-                    {% block content %}
-                    <!-- Content will be inserted here by child templates -->
-                    {% endblock content %}
-                </div>
-            </div>
+    <main>
+        <div class="mx-auto mt-4 max-w-7xl px-4 pb-12 sm:px-6 lg:px-8 py-6 rounded-lg bg-white shadow">
+            {% block content %}
+            <!-- Content will be inserted here by child templates -->
+            {% endblock content %}
         </div>
     </main>
 </div>
 
 <script>
+    // 쿠키 조회
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // 로그아웃 처리
+    function handleLogout(event) {
+        event.preventDefault();
+
+        fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCookie('csrftoken') || ''
+            },
+            credentials: 'same-origin'
+        })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else {
+                    return response.json().then(data => {
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        } else {
+                            window.location.href = '/';
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('로그아웃 중 오류 발생:', error);
+                window.location.href = '/';
+            });
+    }
+
     // Initialize when DOM is loaded
     document.addEventListener('DOMContentLoaded', function () {
         // Mobile menu toggle
@@ -228,7 +275,6 @@
         const menu = document.getElementById('mobile-menu');
         const menuIcon = document.getElementById('menu-icon-open');
         const closeIcon = document.getElementById('menu-icon-close');
-
         if (menuButton && menu && menuIcon && closeIcon) {
             menuButton.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -253,7 +299,6 @@
         // User dropdown toggle
         const userMenuButton = document.getElementById('user-menu-button');
         const userMenu = document.getElementById('user-dropdown');
-
         if (userMenuButton && userMenu) {
             userMenuButton.addEventListener('click', function (e) {
                 e.stopPropagation();
@@ -270,6 +315,12 @@
                 e.stopPropagation();
             });
         }
+
+        const logoutButtons = document.querySelectorAll('.logout-button');
+        logoutButtons
+            .forEach(button => {
+                button.addEventListener('click', handleLogout);
+            });
     });
 
     // API Client

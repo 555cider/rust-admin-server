@@ -18,7 +18,6 @@ pub use user_type::UserTypeRepository;
 #[async_trait]
 pub trait Repository: Send + Sync + 'static {
     type Pool;
-    #[allow(dead_code)]
     fn new(pool: Arc<SqlitePool>) -> Self;
 }
 

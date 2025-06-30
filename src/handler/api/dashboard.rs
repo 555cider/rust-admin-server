@@ -8,15 +8,15 @@ use axum::{extract::State, middleware, response::Json, routing::get, Extension, 
 use serde::Serialize;
 use std::sync::Arc;
 
+pub fn route() -> Router<Arc<AppState>> {
+    Router::new()
+        .route("/", get(|state, auth| api_dashboard_data(state, auth)))
+        .layer(middleware::from_fn(auth))
+}
+
 #[derive(Serialize)]
 struct ApiDashboardResponse {
     dashboard_data: DashboardData,
-}
-
-pub fn route() -> Router<Arc<AppState>> {
-    Router::new()
-        .route("/dashboard", get(api_dashboard_data))
-        .layer(middleware::from_fn(auth))
 }
 
 async fn api_dashboard_data(

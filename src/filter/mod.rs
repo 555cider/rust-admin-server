@@ -2,7 +2,7 @@
 //!
 //! This module contains various filter components that can be used to add functionality
 //! to the request/response lifecycle, such as authentication, logging, etc.
-pub(crate) mod auth;
+pub mod auth;
 mod log;
 mod optional_auth;
 

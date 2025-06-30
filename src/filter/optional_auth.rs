@@ -17,7 +17,7 @@ pub async fn optional_auth(mut request: Request<Body>, next: Next) -> Result<Res
     let token = header_util::extract_token_from_header(&headers)
         // 2. If not found, try to get from access_token cookie
         .map(|s| s.to_string())
-        .or_else(|| cookie_util::get_cookie_value(&headers, "access_token"));
+        .or_else(|| cookie_util::get_access_token(None, &headers));
 
     // 3. If token exists, validate it
     if let Some(token_str) = token {

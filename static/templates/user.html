@@ -2,10 +2,8 @@
 
 {% block title %}사용자 관리{% endblock %}
 
-{% block header_title %}사용자 관리{% endblock %}
-
 {% block content %}
-<div class="px-4 sm:px-6 lg:px-8">
+<div>
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
             사용자 목록
@@ -415,16 +413,6 @@
         }
     }
 
-    // Check if API client is available
-    function checkApiClient() {
-        if (!window.apiClient) {
-            showError('API 클라이언트를 초기화할 수 없습니다. 페이지를 새로고침 해주세요.');
-            console.error('API client not found');
-            return false;
-        }
-        return true;
-    }
-
     // Initialize the page
     function initializePage() {
         const tbody = document.getElementById('users-table-body');
@@ -472,14 +460,6 @@
                 loadUsers();
             });
         }
-    }
-
-    // Start initialization when DOM is loaded
-    document.addEventListener('DOMContentLoaded', initializePage);
-
-    // Also try to initialize if DOM is already loaded
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        setTimeout(initializePage, 1);
     }
 </script>
 {% endblock %}

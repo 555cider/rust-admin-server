@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Admin Dashboard</title>
+    <title>{% block title %}Admin Dashboard{% endblock %}</title>
+    {% block extra_head %}
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap"/>
     <style>
         html, body {
@@ -12,12 +13,14 @@
             font-family: 'Roboto', sans-serif;
             background: linear-gradient(135deg, #e0e7ff 0%, #f4f6f8 100%);
         }
+
         body {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+
         .container {
             background: #fff;
             border-radius: 16px;
@@ -27,6 +30,7 @@
             min-width: 320px;
             max-width: 360px;
         }
+
         .logo {
             font-size: 2.2rem;
             font-weight: 700;
@@ -34,11 +38,13 @@
             margin-bottom: 12px;
             letter-spacing: 1px;
         }
+
         .subtitle {
             color: #64748b;
             font-size: 1.1rem;
             margin-bottom: 32px;
         }
+
         .login-link {
             display: inline-block;
             padding: 12px 32px;
@@ -51,9 +57,11 @@
             transition: background 0.2s;
             box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
         }
+
         .login-link:hover {
             background: linear-gradient(90deg, #818cf8 0%, #6366f1 100%);
         }
+
         @media (max-width: 480px) {
             .container {
                 padding: 32px 12px 24px 12px;
@@ -61,14 +69,16 @@
             }
         }
     </style>
+    {% endblock %}
     <base href="/"/>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">Admin Dashboard</div>
-        <div class="subtitle">관리자 페이지에 오신 것을 환영합니다.</div>
-        <a class="login-link" href="/auth/login">로그인</a>
-    </div>
-    <script src="/static/js/lib.js"></script>
+{% block content %}
+<div class="container">
+    <div class="logo">Admin Dashboard</div>
+    <div class="subtitle">관리자 페이지에 오신 것을 환영합니다.</div>
+    <a class="login-link" href="/auth/login">로그인</a>
+</div>
+{% endblock %}
 </body>
 </html>

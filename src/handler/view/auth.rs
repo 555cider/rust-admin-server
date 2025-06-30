@@ -44,7 +44,7 @@ async fn login_page(
 }
 
 async fn login_handler(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Form(_form): Form<LoginForm>,
 ) -> impl IntoResponse {
     // TODO: Implement actual authentication

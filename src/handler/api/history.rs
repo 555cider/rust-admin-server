@@ -6,7 +6,7 @@ use crate::{
 };
 use axum::{
     extract::{Extension, Path, Query, State},
-    middleware::from_fn,
+    middleware,
     response::Json,
     routing::{delete, get},
     Router,
@@ -39,7 +39,7 @@ pub fn route() -> Router<Arc<AppState>> {
             "/cleanup",
             delete(|state, auth, params| cleanup_old_logs(state, auth, params)),
         )
-        .layer(from_fn(auth))
+        .layer(middleware::from_fn(auth))
 }
 
 /// List history with pagination and filtering
